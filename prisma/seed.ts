@@ -1,6 +1,3 @@
-import { config } from "dotenv";
-config(); // carga .env antes de que Prisma intente leer DATABASE_URL
-
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 

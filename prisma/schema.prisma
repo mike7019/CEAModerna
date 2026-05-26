@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Estudiante {
+  id        String   @id @default(cuid())
+  cedula    String   @unique
+  password  String
+  nombre    String
+  apellido  String
+  email     String   @unique
+  telefono  String?
+  curso     String   @default("CURSOB1")
+  deuda     Float    @default(0)
+  clases    ClaseEstudiante[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Clase {
+  id     String @id @default(cuid())
+  numero Int    @unique
+  nombre String
+  horas  Int
+  tipo   String @default("teorica") // teorica | practica
+  clases ClaseEstudiante[]
+}
+
+model SlotDisponible {
+  id          String            @id @default(cuid())
+  fecha       String            // "2026-06-15"
+  horaInicial String            // "08:00"
+  horaFinal   String            // "10:00"
+  aula        String            @default("Aula teórica centro")
+  cupos       Int               @default(5)
+  reservas    ClaseEstudiante[]
+  createdAt   DateTime          @default(now())
+}
+
+model ClaseEstudiante {
+  id           String          @id @default(cuid())
+  estudianteId String
+  claseId      String
+  slotId       String?
+  estado       String          @default("pendiente") // pendiente | agendada | completada | cancelada
+  asistencia   Boolean?
+  estudiante   Estudiante      @relation(fields: [estudianteId], references: [id], onDelete: Cascade)
+  clase        Clase           @relation(fields: [claseId], references: [id])
+  slot         SlotDisponible? @relation(fields: [slotId], references: [id])
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([estudianteId, claseId])
+}

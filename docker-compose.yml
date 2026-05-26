@@ -17,5 +17,25 @@ services:
       timeout: 5s
       retries: 5
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ceamoderna_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    # Carga NEXTAUTH_SECRET, GMAIL_USER y GMAIL_APP_PASSWORD desde .env.local
+    env_file:
+      - .env.local
+    environment:
+      # Sobreescribe DATABASE_URL para usar el nombre del servicio Docker (no localhost)
+      DATABASE_URL: postgresql://ceamoderna:ceamoderna_pass@postgres:5432/ceamoderna
+      NEXTAUTH_URL: http://localhost:3000
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:

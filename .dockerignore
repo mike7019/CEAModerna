@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.gitignore
+
+# Entornos — se pasan como variables al contenedor
+.env
+.env.local
+.env*.local
+
+# No necesarios en el build
+*.md
+coverage
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

@@ -129,10 +129,16 @@ npm run db:push   # Crea las tablas en PostgreSQL
 npm run db:seed   # Carga clases, slots y estudiante de prueba
 ```
 
-### 5. Iniciar el servidor de desarrollo
+### 5a. Desarrollo local
 
 ```bash
 npm run dev
+```
+
+### 5b. Producción con Docker (app + BD containerizadas)
+
+```bash
+docker compose up -d --build
 ```
 
 Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
@@ -270,24 +276,57 @@ ClaseEstudiante    — Relación estudiante ↔ clase con estado y slot asignado
 ## Comandos disponibles
 
 ```bash
-# Desarrollo
-npm run dev          # Servidor de desarrollo en localhost:3000
-
-# Producción
+# Desarrollo local
+npm run dev          # Servidor Next.js en localhost:3000
 npm run build        # Build de producción
-npm run start        # Servidor de producción
+npm run start        # Servidor de producción (tras build)
 
-# Base de datos
-npm run db:push      # Aplica el schema a la BD (sin migraciones)
+# Base de datos (requiere contenedor de postgres corriendo)
+npm run db:push      # Aplica el schema a PostgreSQL
 npm run db:seed      # Carga datos de prueba
 npm run db:studio    # Abre Prisma Studio en localhost:5555
 
-# Docker
-docker compose up -d      # Levanta PostgreSQL en background
-docker compose down       # Detiene el contenedor
-docker compose down -v    # Detiene y elimina el volumen (borra todos los datos)
-docker logs ceamoderna_db # Ver logs del contenedor
+# Docker — solo base de datos
+docker compose up postgres -d        # Solo levanta PostgreSQL
+docker compose down                  # Detiene todos los servicios
+docker compose down -v               # Detiene y borra el volumen (elimina datos)
+
+# Docker — app completa (Next.js + PostgreSQL)
+docker compose up -d --build         # Build y levanta ambos servicios
+docker compose up -d                 # Levanta sin rebuild (usa imagen existente)
+docker compose build app             # Reconstruye solo la imagen de la app
+docker logs ceamoderna_app           # Logs de la app
+docker logs ceamoderna_db            # Logs de PostgreSQL
+
+# Seed desde el host (con postgres expuesto en localhost:5432)
+npm run db:seed
+
+# Seed dentro del contenedor (alternativa)
+docker compose exec app node -e "require('./prisma/seed')"
 ```
+
+## Arquitectura Docker
+
+```
+┌─────────────────────────────────────────────┐
+│              docker-compose                 │
+│                                             │
+│  ┌──────────────┐     ┌─────────────────┐   │
+│  │  app         │────▶│  postgres       │   │
+│  │  :3000       │     │  :5432          │   │
+│  │  Next.js 16  │     │  PostgreSQL 16  │   │
+│  └──────────────┘     └─────────────────┘   │
+│         │                      │            │
+└─────────┼──────────────────────┼────────────┘
+          │                      │
+     localhost:3000         localhost:5432
+     (navegador)            (Prisma Studio /
+                             psql desde host)
+```
+
+- La `app` usa `DATABASE_URL` con hostname `postgres` (red interna Docker)
+- El host accede a la BD en `localhost:5432` para seeds y Prisma Studio
+- Las credenciales sensibles (`NEXTAUTH_SECRET`, `GMAIL_*`) se cargan desde `.env.local`
 
 ---
 

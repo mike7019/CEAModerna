@@ -1,19 +1,20 @@
 # ── Etapa 1: Instalar dependencias ───────────────────────────────────────────
-FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat
+FROM node:20-slim AS deps
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 COPY package.json package-lock.json ./
 RUN npm install
 
 # ── Etapa 2: Build ────────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Variables dummy solo para que prisma generate y next build no fallen
+# Variables dummy para que prisma generate y next build no fallen en build time
 ENV DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy
 ENV NEXTAUTH_SECRET=build-time-secret-placeholder
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -22,7 +23,8 @@ RUN npx prisma generate
 RUN npm run build
 
 # ── Etapa 3: Runner (imagen final mínima) ─────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -31,7 +33,6 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Archivos estáticos y standalone
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
@@ -40,7 +41,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
-# Schema de Prisma (necesario para migraciones opcionales en entrypoint)
 COPY --from=builder /app/prisma ./prisma
 
 USER nextjs
